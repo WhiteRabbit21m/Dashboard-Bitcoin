@@ -22,7 +22,7 @@
         }
         .container {
             background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            border-radius: 5px;
             padding: 30px;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
             backdrop-filter: blur(4px);
@@ -51,7 +51,7 @@
         #countdown-container, #fees-container {
             flex: 1;
             background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
+            border-radius: 5px;
             padding: 20px;
         }
         #countdown {
@@ -64,11 +64,16 @@
             margin-bottom: 10px;
             font-size: 1.2em;
         }
+        #halving-date {
+            color: var(--white);
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
         #progress-container {
             width: 100%;
             height: 30px;
             background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
+            border-radius: 3px;
             overflow: hidden;
             margin: 20px 0;
             position: relative;
@@ -78,7 +83,7 @@
             height: 100%;
             background: linear-gradient(90deg, #FF8C00, #FFA500);
             transition: width 0.5s ease-in-out;
-            border-radius: 5px;
+            border-radius: 3px;
         }
         #progress-percentage {
             position: absolute;
@@ -126,6 +131,7 @@
         <div class="content-wrapper">
             <div id="countdown-container">
                 <div id="countdown-title">Next Bitcoin Halving in:</div>
+                <div id="halving-date">Calculating...</div>
                 <div id="countdown">Loading...</div>
                 <div id="progress-container">
                     <div id="progress-bar"></div>
@@ -184,7 +190,8 @@
                 return;
             }
 
-            const blocksUntilHalving = 1050000 - blockHeight;
+            const nextHalvingBlock = 1050000;
+            const blocksUntilHalving = nextHalvingBlock - blockHeight;
             const secondsPerBlock = 600;
             const secondsUntilHalving = blocksUntilHalving * secondsPerBlock;
             const halvingDate = new Date(Date.now() + secondsUntilHalving * 1000);
@@ -197,6 +204,9 @@
             const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
             document.getElementById("current-block").textContent = `Block: ${blockHeight}`;
+
+            // Update halving date
+            document.getElementById("halving-date").textContent = `Expected on: ${halvingDate.toDateString()}`;
 
             document.getElementById("countdown").innerHTML = `
                 <span class="highlight">${years}</span> years, <span class="highlight">${days}</span> days, and <span class="highlight">${hours}</span> hours<br>
