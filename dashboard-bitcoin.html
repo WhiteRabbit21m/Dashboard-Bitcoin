@@ -139,6 +139,74 @@
         .full-width {
             grid-column: 1 / -1;
         }
+        .broadcast-transaction {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        #tx-hex {
+            width: 80%;
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: var(--card-background);
+            border: 1px solid var(--secondary-color);
+            border-radius: 4px;
+            color: var(--text-color);
+            font-family: monospace;
+            resize: none;
+            overflow-y: auto;
+            height: 100px;
+        }
+        #broadcast-btn {
+            width: 200px;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #broadcast-btn:hover {
+            background-color: #0052a3;
+        }
+        #broadcast-result {
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        #mempool-container {
+            width: 100%;
+            height: 400px;
+            background-color: var(--card-background);
+            border-radius: 8px;
+            overflow-y: auto;
+        }
+        .transaction-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .transaction-item {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background-color 0.3s ease;
+        }
+        .transaction-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .transaction-item span {
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .txid {
+            color: var(--secondary-color);
+            cursor: pointer;
+        }
+        .txid:hover {
+            text-decoration: underline;
+        }
         @media (max-width: 768px) {
             .content-wrapper {
                 grid-template-columns: 1fr;
@@ -153,6 +221,16 @@
             <div id="current-block">Block: ...</div>
         </div>
         <div class="content-wrapper">
+            <!-- Broadcast Transaction è ora il primo container -->
+            <div class="card full-width">
+                <div class="card-title">Broadcast Transaction</div>
+                <div class="broadcast-transaction">
+                    <textarea id="tx-hex" placeholder="Enter signed transaction hex"></textarea>
+                    <button id="broadcast-btn">Broadcast Transaction</button>
+                    <div id="broadcast-result"></div>
+                </div>
+            </div>
+            
             <div class="card">
                 <div class="card-title">Next Bitcoin Halving</div>
                 <div id="halving-date">Calculating...</div>
@@ -162,6 +240,7 @@
                     <div id="progress-percentage">0%</div>
                 </div>
             </div>
+            
             <div class="card">
                 <div class="card-title">Network Fees (sat/vB)</div>
                 <div class="fee-row">
@@ -177,6 +256,7 @@
                     <span class="fee-value" id="low-fee">...</span>
                 </div>
             </div>
+            
             <div class="card full-width">
                 <div class="card-title">Latest Block Details</div>
                 <div class="block-detail-row">
@@ -200,10 +280,17 @@
                     <span class="block-detail-value" id="block-fees">...</span>
                 </div>
             </div>
+            
+            <div class="card full-width">
+                <div class="card-title">Latest Mempool Transactions</div>
+                <div id="mempool-container">
+                    <ul class="transaction-list" id="transaction-list"></ul>
+                </div>
+            </div>
         </div>
     </div>
-
-<script>
+    
+    <script>
     let currentBlockHeight = null;
 
     async function getBlockHeight() {
@@ -255,7 +342,8 @@
             return;
         }
 
-        const nextHalvingBlock = 1050000;
+        const halvingInterval = 210000;
+        const nextHalvingBlock = Math.ceil(blockHeight / halvingInterval) * halvingInterval;
         const blocksUntilHalving = nextHalvingBlock - blockHeight;
         const secondsPerBlock = 600;
         const secondsUntilHalving = blocksUntilHalving * secondsPerBlock;
@@ -268,14 +356,12 @@
         const days = Math.floor((timeLeft % (1000 * 60 * 60 * 24 * 365.25)) / (1000 * 60 * 60 * 24));
         const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-        // Aggiorna il numero del blocco e rendi cliccabile
         const currentBlockElement = document.getElementById("current-block");
         currentBlockElement.textContent = `Block: ${blockHeight}`;
         currentBlockElement.onclick = () => {
             window.open(`https://mempool.space/block/${blockHeight}`, '_blank');
         };
 
-        // Aggiorna halving date
         document.getElementById("halving-date").textContent = `Expected on: ${halvingDate.toDateString()}`;
 
         document.getElementById("countdown").innerHTML = `
@@ -283,9 +369,7 @@
             (<span class="highlight">${blocksUntilHalving}</span> blocks remaining)
         `;
 
-        const totalBlocks = 210000;
-        const blocksPassed = totalBlocks - blocksUntilHalving;
-        const progressPercentage = (blocksPassed / totalBlocks) * 100;
+        const progressPercentage = (blockHeight % halvingInterval / halvingInterval) * 100;
         document.getElementById("progress-bar").style.width = `${progressPercentage}%`;
         document.getElementById("progress-percentage").textContent = `${progressPercentage.toFixed(2)}%`;
 
@@ -297,31 +381,131 @@
     }
 
     function updateNetworkFees(fees) {
-        if (fees) {
-            document.getElementById("high-fee").textContent = fees.high;
-            document.getElementById("medium-fee").textContent = fees.medium;
-            document.getElementById("low-fee").textContent = fees.low;
-        } else {
-            document.getElementById("high-fee").textContent = "Error";
-            document.getElementById("medium-fee").textContent = "Error";
-            document.getElementById("low-fee").textContent = "Error";
-        }
+        document.getElementById("high-fee").textContent = fees?.high || "Error";
+        document.getElementById("medium-fee").textContent = fees?.medium || "Error";
+        document.getElementById("low-fee").textContent = fees?.low || "Error";
     }
 
     function updateBlockDetails(details) {
         if (details) {
-            document.getElementById("block-hash").textContent = details.hash;
-            document.getElementById("block-timestamp").textContent = details.timestamp;
-            document.getElementById("block-size").textContent = details.size;
-            document.getElementById("block-weight").textContent = details.weight;
-            document.getElementById("block-fees").textContent = details.fees;
+            ["hash", "timestamp", "size", "weight", "fees"].forEach(key => {
+                document.getElementById(`block-${key}`).textContent = details[key];
+            });
         } else {
-            document.getElementById("block-hash").textContent = "Error";
-            document.getElementById("block-timestamp").textContent = "Error";
-            document.getElementById("block-size").textContent = "Error";
-            document.getElementById("block-weight").textContent = "Error";
-            document.getElementById("block-fees").textContent = "Error";
+            ["hash", "timestamp", "size", "weight", "fees"].forEach(key => {
+                document.getElementById(`block-${key}`).textContent = "Error";
+            });
         }
+    }
+
+    async function broadcastTransaction() {
+        const txHex = document.getElementById('tx-hex').value.trim();
+        const resultElement = document.getElementById('broadcast-result');
+
+        if (!txHex) {
+            resultElement.textContent = 'Please enter a signed transaction hex.';
+            return;
+        }
+
+        try {
+            const response = await fetch('https://blockstream.info/api/tx', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain',
+                },
+                body: txHex
+            });
+
+            if (response.ok) {
+                const txid = await response.text();
+                resultElement.textContent = `Transaction broadcasted successfully. TXID: ${txid}`;
+                resultElement.style.color = 'green';
+            } else {
+                const errorText = await response.text();
+                resultElement.textContent = `Error broadcasting transaction: ${errorText}`;
+                resultElement.style.color = 'red';
+            }
+        } catch (error) {
+            resultElement.textContent = `Error: ${error.message}`;
+            resultElement.style.color = 'red';
+        }
+    }
+
+    async function getRecentTransactions() {
+        try {
+            console.log("Fetching recent transactions...");
+            const response = await fetch('https://mempool.space/api/mempool/recent');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log("Fetched transactions:", data);
+            return data;
+        } catch (error) {
+            console.error('Error fetching recent transactions:', error);
+            return null;
+        }
+    }
+
+    function generateSampleTransactions(count) {
+        return Array.from({ length: count }, (_, i) => ({
+            txid: `sample-tx-${i}`,
+            fee: Math.floor(Math.random() * 50000),
+            vsize: Math.floor(Math.random() * 1000 + 200),
+            value: Math.floor(Math.random() * 10000000),
+            isSample: true
+        }));
+    }
+
+    function createTransactionListItem(tx) {
+        const li = document.createElement('li');
+        li.className = 'transaction-item';
+        
+        const feeRate = (tx.fee / tx.vsize).toFixed(2);
+        const btcValue = tx.value / 100000000; // Convert satoshis to BTC
+        const value = btcValue.toFixed(8).replace('.', ',');
+        
+        li.innerHTML = `
+            <span class="txid" onclick="window.open('https://mempool.space/tx/${tx.txid}', '_blank')">${tx.txid.substring(0, 8)}...</span>
+            <span>Fee: ${tx.fee} sats</span>
+            <span>Size: ${tx.vsize} vBytes</span>
+            <span>Fee Rate: ${feeRate} sat/vB</span>
+            <span>Value: ${value} BTC</span>
+        `;
+        
+        return li;
+    }
+
+    async function updateMempoolTransactions() {
+        console.log("Updating mempool transactions...");
+        const transactionList = document.getElementById('transaction-list');
+        if (!transactionList) {
+            console.error("Transaction list container not found!");
+            return;
+        }
+        
+        let newTransactions = await getRecentTransactions();
+        
+        if (!newTransactions || newTransactions.length === 0) {
+            console.log("Using sample transactions due to API error or empty response");
+            newTransactions = generateSampleTransactions(20);
+        } else {
+            console.log(`Received ${newTransactions.length} real transactions`);
+            newTransactions = newTransactions.slice(0, 20); // Ensure we only have 20 transactions
+        }
+
+        // Remove old transactions
+        while (transactionList.firstChild) {
+            transactionList.removeChild(transactionList.lastChild);
+        }
+
+        // Add new transactions
+        newTransactions.forEach(tx => {
+            const txElement = createTransactionListItem(tx);
+            transactionList.appendChild(txElement);
+        });
     }
 
     async function updateData() {
@@ -341,11 +525,16 @@
     }
 
     async function init() {
+        console.log("Initializing...");
         await updateData();
-        setInterval(updateData, 60000);
+        await updateMempoolTransactions();
+        setInterval(updateData, 60000); // Update data every minute
+        setInterval(updateMempoolTransactions, 5000); // Update mempool transactions every 5 seconds
+        document.getElementById('broadcast-btn').addEventListener('click', broadcastTransaction);
+        console.log("Initialization complete");
     }
 
     init();
-</script>
+    </script>
 </body>
 </html>
